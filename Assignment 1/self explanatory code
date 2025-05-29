@@ -1,0 +1,40 @@
+> # Load necessary packages
+> suppressWarnings(suppressPackageStartupMessages({
++     library(tidyverse)
++     library(lmtest)
++     library(sandwich)
++     library(fixest)  # For robust regression with clustering
++ }))
+> 
+> # Step 1: Prepare Data
+> TARGET_POSTCODE <- "10115"  # Replace with your actual postal code
+> df_clean <- df %>%
++     filter(!is.na(toas), !is.na(shfd), !is.na(postcode)) %>%
++     mutate(
++         equity_ratio = 100 * shfd / toas,
++         from_target_postcode = ifelse(postcode == TARGET_POSTCODE, 1, 0)
++     )
+> 
+> # Step 2: T-tests
+> tt_total_assets <- t.test(toas ~ from_target_postcode, data = df_clean)
+> tt_equity_ratio <- t.test(equity_ratio ~ from_target_postcode, data = df_clean)
+> 
+> # Step 3: Summary statistics
+> summary_stats <- df_clean %>%
++     group_by(from_target_postcode) %>%
++     summarise(
++         mean_assets = mean(toas, na.rm = TRUE),
++         mean_equity_ratio = mean(equity_ratio, na.rm = TRUE),
++         n = n()
++     )
+> 
+> # Step 4: Pooled Regression with Fixed Effects and Clustered SE
+> reg_assets <- feols(toas ~ from_target_postcode | year, data = df_clean, cluster = ~name_native)
+> reg_equity <- feols(equity_ratio ~ from_target_postcode | year, data = df_clean, cluster = ~name_native)
+> 
+> # Step 5: Show Results
+> cat("=== T-Test Results ===\n")
+=== T-Test Results ===
+> cat("Total Assets:\n")
+Total Assets:
+> print(tt_total_assets)
